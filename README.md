@@ -15,15 +15,15 @@
 5. Finally, client side **OOM**
 
 ---
-**What's the fixes**
-Add 3 extra configuration  options:
--**'qmaxsize'**, for worker queue, default value **-1** (infinite queue, same as original)
--**'timeout'**, for HTTP request/response , default value **None** (no timeout queue, same as original)
--**'retries'**: for HTTP connection, default value **False** (no retry, the original value in urllib3 is **3**)
+### What are the fixes
+**Add 3 extra configuration  options:**
+* **'qmaxsize'**, for worker queue, default value **-1** (infinite queue, same as original)
+* **'timeout'**, for HTTP request/response , default value **None** (no timeout queue, same as original)
+* **'retries'**: for HTTP connection, default value **False** (no retry, the original value in urllib3 is **3**)
 
 ---
-**How to use**
---**Basically the same as the original, just add those 3 additional options in SDK init** 
+### How to use
+**Basically the same as the original, just add those 3 additional options in SDK init** 
 ```python
 import logging  
 import sentry_sdk  
