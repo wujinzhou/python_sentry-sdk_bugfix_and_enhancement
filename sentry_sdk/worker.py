@@ -16,10 +16,15 @@ _TERMINATOR = object()
 
 
 class BackgroundWorker(object):
-    def __init__(self):
+    def __init__(self, options=None): #enchance: set the max queue size for the message quque 
         # type: () -> None
         check_thread_support()
-        self._queue = queue.Queue(-1)  # type: Queue[Any]
+
+        max_q_len = -1
+        if options:
+            max_q_len = options.get('qmaxsize', -1)
+
+        self._queue = queue.Queue(max_q_len)  # type: Queue[Any]
         self._lock = Lock()
         self._thread = None  # type: Optional[Thread]
         self._thread_for_pid = None  # type: Optional[int]
@@ -92,9 +97,13 @@ class BackgroundWorker(object):
             self._timed_queue_join(timeout - initial_timeout)
 
     def submit(self, callback):
-        # type: (Callable) -> None
-        self._ensure_thread()
-        self._queue.put_nowait(callback)
+        # type: (Callable) -> bool #enchance: tell the caller if the event submission is success
+        try:
+            self._ensure_thread()
+            self._queue.put_nowait(callback)
+            return True
+        except:
+            return False 
 
     def _target(self):
         # type: () -> None

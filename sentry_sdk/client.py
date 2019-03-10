@@ -223,7 +223,8 @@ class Client(object):
         event = self._prepare_event(event, hint, scope)  # type: ignore
         if event is None:
             return None
-        self.transport.capture_event(event)
+        if self.transport.capture_event(event) == False:
+            return None
         return rv
 
     def close(self, timeout=None, callback=None):

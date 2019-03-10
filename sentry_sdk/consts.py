@@ -69,6 +69,9 @@ DEFAULT_OPTIONS = {
     "debug": False,
     "attach_stacktrace": False,
     "ca_certs": None,
+    'qmaxsize': -1,
+    'timeout':None,
+    'retries':False,
 }
 
 

@@ -74,7 +74,7 @@ class HttpTransport(Transport):
     def __init__(self, options):
         # type: (ClientOptions) -> None
         Transport.__init__(self, options)
-        self._worker = BackgroundWorker()
+        self._worker = BackgroundWorker(options) #enhance: pass options to worker class
         self._auth = self.parsed_dsn.to_auth("sentry.python/%s" % VERSION)
         self._disabled_until = None  # type: Optional[datetime]
         self._retry = urllib3.util.Retry()
@@ -111,28 +111,31 @@ class HttpTransport(Transport):
                 self.parsed_dsn.project_id,
             )
         )
-        response = self._pool.request(
-            "POST",
-            str(self._auth.store_api_url),
-            body=body.getvalue(),
-            headers={
-                "X-Sentry-Auth": str(self._auth.to_header()),
-                "Content-Type": "application/json",
-                "Content-Encoding": "gzip",
-            },
-        )
 
+        # fixed: 1) move request into try block 2) set timeout from options, there's no points to wait forever
         try:
-            if response.status == 429:
-                self._disabled_until = datetime.utcnow() + timedelta(
-                    seconds=self._retry.get_retry_after(response) or 60
-                )
-                return
+            response = self._pool.request(
+                "POST",
+                str(self._auth.store_api_url),
+                timeout=self.options.get('timeout', None),
+                body=body.getvalue(),
+                headers={
+                    "X-Sentry-Auth": str(self._auth.to_header()),
+                    "Content-Type": "application/json",
+                    "Content-Encoding": "gzip",
+                },
+            )
+        except:
+            return
 
-            elif response.status >= 300 or response.status < 200:
-                raise ValueError("Unexpected status code: %s" % response.status)
-        finally:
-            response.close()
+        if response.status == 429:
+            self._disabled_until = datetime.utcnow() + timedelta(
+                seconds=self._retry.get_retry_after(response) or 60
+            )
+            return
+
+        elif response.status >= 300 or response.status < 200:
+            raise ValueError("Unexpected status code: %s" % response.status)
 
         self._disabled_until = None
 
@@ -142,6 +145,7 @@ class HttpTransport(Transport):
             "num_pools": 2,
             "cert_reqs": "CERT_REQUIRED",
             "ca_certs": ca_certs or certifi.where(),
+            "retries": self.options.get('retries', False) #enchance: add retries configuration
         }
 
     def _make_pool(
@@ -165,7 +169,7 @@ class HttpTransport(Transport):
             return urllib3.PoolManager(**opts)
 
     def capture_event(self, event):
-        # type: (Dict[str, Any]) -> None
+        # type: (Dict[str, Any]) -> bool #enchance
         hub = self.hub_cls.current
 
         def send_event_wrapper():
@@ -174,7 +178,10 @@ class HttpTransport(Transport):
                 with capture_internal_exceptions():
                     self._send_event(event)
 
-        self._worker.submit(send_event_wrapper)
+        #enchance: return put result from worker queue
+        return self._worker.submit(send_event_wrapper)
+
+
 
     def flush(self, timeout, callback=None):
         # type: (float, Optional[Any]) -> None
