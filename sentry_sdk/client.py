@@ -185,6 +185,28 @@ class Client(object):
         scope=None,  # type: Scope
     ):
         # type: (...) -> bool
+
+        #fixed: add exclude list to filter out unwanted events
+        keylist = []
+        loggers = event.get('logger', None)
+        if loggers:
+            keylist += [loggers]
+            keylist += loggers.split('.')
+
+        exceptions = event.get('exception', None)
+        if exceptions:
+            try:
+                except_type = exceptions['values'][0]['type']
+                except_module = exceptions['values'][0]['stacktrace']['frames'][-1]['module']
+                keylist += [except_module, except_type, except_module + '.' + except_type]
+            except:
+                #fixme: may be not a good practise to do the above
+                pass
+
+        for e in self.options['exclude']:
+            if e in keylist:
+                return False
+
         if scope is not None and not scope._should_capture:
             return False
 
