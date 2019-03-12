@@ -9,8 +9,8 @@
 ### Fixed: Sentry SDK out of memory (OOM) problem
 **What's the problem in the official release**
 1. Worker queue uses an infinite queue to store captured **<u>event callbacks</u>**, the insertion is not being blocked whenever an events callback is put into the queue. This implies, if other callbacks are generated (and the number is more than one) during each callbacks's execution, **<u>then the queue size will keep increasing</u>**
-2. The callback functions in the queue uses urllib3 PoolManager to send HTTP requests to server, by default, when a connection to server is failed, up to 3 times of **retries** will be made, and during these retries, another 3 waring message are captured as events and put into the queue. In short, when one callback is being executed, another 3 new callbacks will be generated. 
-3. In bad internet conditions (for example, your sentry server is unreachable) the retry mechanism in (2) will blast the worker queue. And what make it even worse, since connection timeout has **not** been set by default, all HTTP requests are in 'keep trying' states and stuck in the memory and stuck in memory until...(**<del>海枯石烂</del>** system timeout)
+2. The callback functions in the queue implements urllib3 PoolManager to send HTTP requests to server, by default, when a connection to server is failed, another 3 **retries** will be made, and during each of the retry, a warning message will be generated and captured as an event and finally put into the queue. In short, for each 1 callback is being executed, another 3 additional callbacks will be generated, so the queue size is keep growing. 
+3. In bad internet conditions (for example, your sentry server is unreachable) the retry mechanism in (2) will blast the worker queue. And what make it even worse, the connection **timeout** has **not** been set by default, so all HTTP requests are in 'keep trying' states and stuck in the memory until...(**<del>海枯石烂</del>** system timeout)
 4. Finally, client side **OOM**
 
 ---
