@@ -15,23 +15,24 @@
 
 ---
 ### What are the fixes
-**Add 4 extra configuration  options:**
-* **'qmaxsize'**, for worker queue, default value **-1** (infinite queue, same as the original)
-* **'timeout'**, for HTTP request/response , default value **None** (no timeout queue, same as the original)
+**Use 4 extra configuration  options:**
+* **'qmaxsize'**, for worker queue, default value **-1** (infinite queue, same as the original's default value)
+* **'timeout'**, for HTTP request/response , default value **None** (no timeout queue, same as the original's default value)
 * **'retries'**, for HTTP connection, default value **False** (no retry, the original retries in urllib3 is **3**)
-* **'exclude'**, for client's '_should_capture' function, default value **[]** (no exclusion, not provided in the original implementation)
+* **'ignore_errors'**, for client's '_is_ignored_error' function, default value **[]** (no exclusion, same as the original's default value)
   * If the function callback itself emits events, it may cause an 'endless loop' just like the scenario mentioned above 
-  * Then it's necessary to use **'exclude'** to avoid these emissions
+  * Then it's necessary to use **'ignore_errors'** to avoid these emissions
   * Example -- if we want to exclude 
-    1) all log messages from a **specific logger**, which named 'SocketListener', 
+    1) all log messages from a **specific logger**, which named 'SocketListener' (not possible in the original implementation)
     2) all 'ValueError' **exceptions** from anywhere 
-    3) all **exceptions** from **module** 'foo' 
+    3) all **exceptions** from **module** 'foo', witch 'foo' is the module that actually generate exceptions according to stacktrace (not possible in the original implementation)
     4) all 'ZeroDivisionError' **exceptions** from **module** 'bar'
-    * We can set _exclude=['SocketListener', 'ValueError', 'foo', 'bar.ZeroDivisionError']_
+    5) all **exceptions** from **class** 'baz' **<u>and its subclass</u>**
+    * We can set: **ignore_errors=['SocketListener', 'ValueError', 'foo', 'bar.ZeroDivisionError', baz]**
     
 ---
 ### How to use
-**Basically the same as the original, just add those 4 additional options during SDK init** 
+**Basically the same as the original, just apply those 4 options during SDK init** 
 ```python
 import logging
 import sentry_sdk
@@ -56,7 +57,7 @@ def init_sentry(config):
         qmaxsize=4,                                             # default -1, infinite queue size
         timeout=Timeout(connect=2.0, read=2.0),                 # default None, no timeout
         retries=Retry(total=3, connect=1, read=1, redirect=1),  # default False, no retry
-        exclude=['urllib3']                                     # default [] (dangerous!), should ignore waring messages captured from urllib3, in bad network conditions, waring messages from urllib3 may blast the queue and make client side oom
+        ignore_errors=['urllib3']                               # default [] (dangerous!), should ignore waring messages captured from urllib3, in bad network conditions, waring messages from urllib3 may blast the queue and make client side oom
     )
  
 ```

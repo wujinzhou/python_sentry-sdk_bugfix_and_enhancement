@@ -72,7 +72,6 @@ DEFAULT_OPTIONS = {
     'qmaxsize': -1,
     'timeout':None,
     'retries':False,
-    'exclude':[],
 }
 
 

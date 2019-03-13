@@ -157,25 +157,53 @@ class Client(object):
 
         return event
 
+    # for any logger with with a logger name
+    def _is_ignored_logger(self, event):
+        #type: (Dict[str, Any]) -> bool
+        keylist = []
+        loggers = event.get('logger')
+        if loggers:
+            keylist += [loggers]
+            keylist += loggers.split('.')
+
+        for e in self.options["ignore_errors"]:
+            if e in keylist:
+                return True
+
+        return False
+
+    # for exceptions only ('error' here means exception)
     def _is_ignored_error(self, event, hint):
         # type: (Dict[str, Any], Dict[str, Any]) -> bool
         exc_info = hint.get("exc_info")
         if exc_info is None:
-            return False
+            return self._is_ignored_logger(event)
 
-        type_name = get_type_name(exc_info[0])
-        full_name = "%s.%s" % (exc_info[0].__module__, type_name)
+        keylist = []
+        except_type = get_type_name(exc_info[0])
+        except_module = exc_info[0].__module__ #the original module
 
-        for errcls in self.options["ignore_errors"]:
-            # String types are matched against the type name in the
-            # exception only
-            if isinstance(errcls, string_types):
-                if errcls == full_name or errcls == type_name:
+        keylist += [except_type, except_module, except_module + '.' + except_type]
+
+        traced_exception = event.get('exception')
+        if traced_exception:
+            try:
+                traced_emit_module = traced_exception['values'][0]['stacktrace']['frames'][-1]['module']
+                keylist += [traced_emit_module, traced_emit_module + '.' + except_type]
+            except:
+                # fixme: may be not a good practise to do like this
+                return False # do not ignore
+
+        for e in self.options["ignore_errors"]:
+            if isinstance(e, string_types):
+                if e in keylist:
                     return True
             else:
-                if issubclass(exc_info[0], errcls):
-                    return True
-
+                try:
+                    if issubclass(exc_info[0], e):
+                        return True
+                except:
+                    return False # do not ignore
         return False
 
     def _should_capture(
@@ -186,27 +214,6 @@ class Client(object):
     ):
         # type: (...) -> bool
 
-        #fixed: add exclude list to filter out unwanted events
-        keylist = []
-        loggers = event.get('logger', None)
-        if loggers:
-            keylist += [loggers]
-            keylist += loggers.split('.')
-
-        exceptions = event.get('exception', None)
-        if exceptions:
-            try:
-                except_type = exceptions['values'][0]['type']
-                except_module = exceptions['values'][0]['stacktrace']['frames'][-1]['module']
-                keylist += [except_module, except_type, except_module + '.' + except_type]
-            except:
-                #fixme: may be not a good practise to do the above
-                pass
-
-        for e in self.options['exclude']:
-            if e in keylist:
-                return False
-
         if scope is not None and not scope._should_capture:
             return False
 
@@ -215,10 +222,8 @@ class Client(object):
             and random.random() >= self.options["sample_rate"]
         ):
             return False
-
         if self._is_ignored_error(event, hint):
             return False
-
         return True
 
     def capture_event(self, event, hint=None, scope=None):
