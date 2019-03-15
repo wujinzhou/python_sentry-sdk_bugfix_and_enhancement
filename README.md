@@ -57,7 +57,7 @@ def init_sentry(config):
         qmaxsize=4,                                             # default -1, infinite queue size
         timeout=Timeout(connect=2.0, read=2.0),                 # default None, no timeout
         retries=Retry(total=3, connect=1, read=1, redirect=1),  # default False, no retry
-        ignore_errors=['urllib3']                               # default [] (dangerous!), should ignore waring messages captured from urllib3, in bad network conditions, waring messages from urllib3 may blast the queue and make client side oom
+        ignore_errors=['urllib3', 'sentry_sdk'],                # default [] (dangerous!), should ignore waring messages captured from urllib3, in bad network conditions, waring messages from urllib3 may blast the queue and make client side oom
     )
  
 ```
